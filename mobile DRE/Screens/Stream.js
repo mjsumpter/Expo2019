@@ -10,21 +10,20 @@ import {
   Image,
   TouchableOpacity
 } from "react-native";
+import Toast, {DURATION} from 'react-native-easy-toast'
 import io from "socket.io-client/dist/socket.io";
 import * as firebase from "firebase";
 
 // firebase configurations for the project
-const firebaseConfig = {
-  apiKey: "AIzaSyCyAOjCgRO1zjYhbEM-_si8Mgb6WHoCep8",
-  authDomain: "scp-dre.firebaseapp.com",
-  databaseURL: "https://scp-dre.firebaseio.com",
-  projectId: "scp-dre",
-  storageBucket: "",
-  messagingSenderId: "758043467370"
+var config = {
+  apiKey: "AIzaSyCQnerH6OCkKcVFjRlojftfHirmOB_npRc",
+  authDomain: "scp-dre-210ba.firebaseapp.com",
+  databaseURL: "https://scp-dre-210ba.firebaseio.com",
+  projectId: "scp-dre-210ba",
+  storageBucket: "scp-dre-210ba.appspot.com",
+  messagingSenderId: "629505421773"
 };
-
-// initializing the firebase instance here
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(config);
 
 // Use this variable to make any calls to the database
 const database = firebase.database();
@@ -33,15 +32,14 @@ export default class App extends React.Component {
   constructor(props) {
     super();
     const me = this;
-    
-    var maxSaved = 10;
     var startTime = Date.now();
     this.state = {
       direction: 0,
       numSaved: 0,
       score: 0,
-      maxSaved: 2,
-      startTime: startTime
+      maxSaved: 1,
+      startTime: startTime,
+      isBtnDisabled: false
     }
 
     this._turn = this._turn.bind(this);
@@ -64,6 +62,8 @@ export default class App extends React.Component {
       me.incrementSaved();
     });
     
+    this.navigateToLeaderBoard.bind(this);
+    this.incrementSaved.bind(this)
   }
 
   state = {
@@ -107,21 +107,6 @@ export default class App extends React.Component {
     this.socket.emit('save');
   }
 
-  incrementSaved(){
-    var newSaved = this.state.numSaved + 1;
-    var endTime = Date.now;
-    var newScore = this.state.score + (500 - (endTime - this.state.startTime));
-    if(newScore < 50)
-      newScore = 50;
-    if(newSaved == maxSaved){
-      this.state.score = this.state.score + newScore;
-      navigateToLeaderBoard();
-    }
-    else {
-      this.setState({numSaved: newSaved, startTime: endTime, score: newScore});
-    }
-  }
-
   navigateToLeaderBoard(){
     const profile = {
       name: this.props.navigation.getParam('name', 'Bob'),
@@ -134,11 +119,43 @@ export default class App extends React.Component {
     this.props.navigation.navigate("Leaderboard")
   }
 
+  incrementSaved(){
+    const me = this;
+    var newSaved = me.state.numSaved + 1;
+    var endTime = Date.now();
+    var addScore = (500 - (endTime - me.state.startTime)/100);
+    var newScore = me.state.score + addScore;
+    var peopleLeft = (me.state.maxSaved - newSaved).toString();
+    if(addScore < 50)
+      newScore += 50;
+    if(newSaved == me.state.maxSaved){
+      me.navigateToLeaderBoard();
+    }
+    else {
+      me.refs.toast.show('New Person Saved!');
+      this.setState({numSaved: newSaved, startTime: endTime, score: newScore, isBtnDisabled: true});
+      setTimeout(function(){
+        me.setState({isBtnDisabled: false});
+      }, 2500)
+    }
+  }
+
   render() {
     return (
       <View style={styles.container}>
+        <Toast
+          ref="toast"
+          style={{backgroundColor:'#18CD12'}}
+          defaultCloseDelay={500}
+          position='top'
+          positionValue={10}
+          fadeInDuration={500}
+          fadeOutDuration={750}
+          opacity={0.8}
+          textStyle={{color:'white'}}
+        />
         <WebView
-          source={{ uri: "http://192.168.1.18:8081/" }} // Insert Pi's camera stream link
+          source={{ uri: "http://10.224.7.152:8081/" }} // Insert Pi's camera stream link
           style={{
             marginTop: 0,
             flex: 1,
@@ -206,6 +223,7 @@ export default class App extends React.Component {
         {/* Collection of Buttons on right side of screen */}
         <View style={{ flex: 1, position: "absolute", right: 10, top: 40 }}>
           <TouchableOpacity
+            disabled={this.state.isBtnDisabled}
             style={{ position: "relative" }}
             onPress={() => this.saveHuman()}
           >
